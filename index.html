@@ -1,12 +1,10 @@
 <!DOCTYPE html>
 <html lang="en">
-<!-- Previous head and style sections remain the same -->
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DRT Code Macro Replacement Tool</title>
     <style>
-        /* Previous styles remain the same */
         * {
             box-sizing: border-box;
             margin: 0;
@@ -203,7 +201,6 @@
         }
 
         function normalizeMacro(macro) {
-            // Remove extra spaces after {{ and before }}
             return macro.replace(/\{\{\s+/, '{{').replace(/\s+\}\}/, '}}');
         }
 
@@ -220,14 +217,11 @@
             hideError();
             hideWarning();
 
-            // Find all macros including those with extra spaces
             const macroRegex = /\{\{\s*.*?\s*\}\}/g;
             const foundMacros = input.match(macroRegex) || [];
             
-            // Track normalizations for warnings
             const normalizations = [];
             
-            // Check each macro
             const undefinedMacros = [];
             foundMacros.forEach(macro => {
                 const normalizedMacro = normalizeMacro(macro);
@@ -248,10 +242,8 @@
                 return;
             }
 
-            // Show warnings for normalized macros
             showWarning(normalizations);
 
-            // Process the script with normalized macros and add original values as comments
             let processedScript = input;
             foundMacros.forEach(macro => {
                 const normalizedMacro = normalizeMacro(macro);
@@ -263,7 +255,6 @@
                 }
             });
 
-            // Wrap in IIFE and add jobDetails declaration with dynamic event check
             const finalScript = `(function () {
 var jobDetails = [...window.dataLayer].reverse().find(item => item.event === 'view_job')?.jobDetails || 
                  [...window.dataLayer].reverse().find(item => item.event === 'view_job_details')?.jobDetails;
@@ -271,7 +262,6 @@ var jobDetails = [...window.dataLayer].reverse().find(item => item.event === 'vi
 ${processedScript}
 })();`;
 
-            // Update output
             document.getElementById('output').value = finalScript;
             outputSection.style.display = 'block';
         }
