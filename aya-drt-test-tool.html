@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="en">
+<!-- Previous head and style sections remain the same -->
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DRT Code Macro Replacement Tool</title>
+    <style>
+        /* Previous styles remain the same */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            line-height: 1.6;
+            padding: 2rem;
+            background-color: #f5f5f5;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            color: #1a1a1a;
+            margin-bottom: 0.5rem;
+        }
+
+        .description {
+            color: #666;
+            margin-bottom: 2rem;
+        }
+
+        .input-group, .output-group {
+            margin-bottom: 1.5rem;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        textarea {
+            width: 100%;
+            height: 200px;
+            padding: 0.75rem;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 14px;
+            resize: vertical;
+            margin-bottom: 1rem;
+        }
+
+        textarea:focus {
+            outline: none;
+            border-color: #4a90e2;
+            box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.2);
+        }
+
+        button {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 4px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .generate-btn {
+            background-color: #4a90e2;
+            color: white;
+            margin-bottom: 1.5rem;
+        }
+
+        .generate-btn:hover {
+            background-color: #357abd;
+        }
+
+        .copy-btn {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            color: #212529;
+        }
+
+        .copy-btn:hover {
+            background-color: #e9ecef;
+        }
+
+        .error {
+            background-color: #fff3f3;
+            border: 1px solid #dc3545;
+            color: #dc3545;
+            padding: 1rem;
+            border-radius: 4px;
+            margin-bottom: 1.5rem;
+            display: none;
+        }
+
+        .warning {
+            background-color: #fff3cd;
+            border: 1px solid #ffeeba;
+            color: #856404;
+            padding: 1rem;
+            border-radius: 4px;
+            margin-bottom: 1.5rem;
+            display: none;
+        }
+
+        .warning ul {
+            margin: 0;
+            padding-left: 1.5rem;
+        }
+
+        .copy-feedback {
+            color: #28a745;
+            font-size: 0.875rem;
+            margin-left: 0.5rem;
+            display: none;
+            vertical-align: middle;
+        }
+
+        .button-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>DRT Code Macro Replacement Tool</h1>
+        <p class="description">Paste your DRT code below, and get the updated script wrapped in an IIFE.</p>
+        
+        <div class="error" id="error-message"></div>
+        <div class="warning" id="warning-message"></div>
+
+        <div class="input-group">
+            <label for="input">Paste your DRT Code:</label>
+            <textarea id="input" placeholder="Paste your DRT code here..."></textarea>
+        </div>
+
+        <button class="generate-btn" onclick="processScript()">Generate Script</button>
+
+        <div class="output-group" id="output-section" style="display: none;">
+            <label for="output">Updated Script:</label>
+            <textarea id="output" readonly></textarea>
+            <div class="button-group">
+                <button class="copy-btn" onclick="copyToClipboard()">
+                    Copy to Clipboard
+                </button>
+                <span class="copy-feedback" id="copy-feedback">Copied!</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const dlvMapping = {
+            "{{DLV - Job - Job ID}}": "jobDetails.jobID",
+            "{{DLV - Job - City}}": "jobDetails.city",
+            "{{DLV - Job - State Abbrev}}": "jobDetails.stateAbbrev",
+            "{{DLV - Job - Expertise Text}}": "jobDetails.expertiseText",
+            "{{Custom Js - Transparent Pay}}": "jobDetails.transparentPay",
+            "{{DLV - Job - Fulfillment Type ID}}": "jobDetails.jobFulfillmentTypeId",
+            "{{DLV - Job - Bonus}}": "jobDetails.bonus"
+        };
+
+        function showError(message) {
+            const errorElement = document.getElementById('error-message');
+            errorElement.textContent = message;
+            errorElement.style.display = 'block';
+        }
+
+        function hideError() {
+            document.getElementById('error-message').style.display = 'none';
+        }
+
+        function showWarning(normalizations) {
+            const warningElement = document.getElementById('warning-message');
+            if (normalizations.length > 0) {
+                const warningHtml = `
+                    Space normalization applied to the following macros:
+                    <ul>
+                        ${normalizations.map(n => `<li>Treated "${n.original}" as "${n.normalized}"</li>`).join('')}
+                    </ul>
+                `;
+                warningElement.innerHTML = warningHtml;
+                warningElement.style.display = 'block';
+            }
+        }
+
+        function hideWarning() {
+            document.getElementById('warning-message').style.display = 'none';
+        }
+
+        function normalizeMacro(macro) {
+            // Remove extra spaces after {{ and before }}
+            return macro.replace(/\{\{\s+/, '{{').replace(/\s+\}\}/, '}}');
+        }
+
+        function processScript() {
+            const input = document.getElementById('input').value;
+            const outputSection = document.getElementById('output-section');
+            
+            if (!input.trim()) {
+                showError('Please paste your DRT code first.');
+                outputSection.style.display = 'none';
+                return;
+            }
+
+            hideError();
+            hideWarning();
+
+            // Find all macros including those with extra spaces
+            const macroRegex = /\{\{\s*.*?\s*\}\}/g;
+            const foundMacros = input.match(macroRegex) || [];
+            
+            // Track normalizations for warnings
+            const normalizations = [];
+            
+            // Check each macro
+            const undefinedMacros = [];
+            foundMacros.forEach(macro => {
+                const normalizedMacro = normalizeMacro(macro);
+                if (macro !== normalizedMacro) {
+                    normalizations.push({
+                        original: macro,
+                        normalized: normalizedMacro
+                    });
+                }
+                if (!dlvMapping[normalizedMacro]) {
+                    undefinedMacros.push(macro);
+                }
+            });
+
+            if (undefinedMacros.length > 0) {
+                showError(`Found undefined macros: ${undefinedMacros.join(', ')}`);
+                outputSection.style.display = 'none';
+                return;
+            }
+
+            // Show warnings for normalized macros
+            showWarning(normalizations);
+
+            // Process the script with normalized macros and add original values as comments
+            let processedScript = input;
+            foundMacros.forEach(macro => {
+                const normalizedMacro = normalizeMacro(macro);
+                if (dlvMapping[normalizedMacro]) {
+                    const regex = new RegExp(`(.*)${macro.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(.*)`, 'g');
+                    processedScript = processedScript.replace(regex, (match, before, after) => {
+                        return `${before}${dlvMapping[normalizedMacro]}${after} // ${macro}`;
+                    });
+                }
+            });
+
+            // Wrap in IIFE and add jobDetails declaration with dynamic event check
+            const finalScript = `(function () {
+var jobDetails = [...window.dataLayer].reverse().find(item => item.event === 'view_job')?.jobDetails || 
+                 [...window.dataLayer].reverse().find(item => item.event === 'view_job_details')?.jobDetails;
+
+${processedScript}
+})();`;
+
+            // Update output
+            document.getElementById('output').value = finalScript;
+            outputSection.style.display = 'block';
+        }
+
+        async function copyToClipboard() {
+            const output = document.getElementById('output');
+            const copyFeedback = document.getElementById('copy-feedback');
+            
+            try {
+                await navigator.clipboard.writeText(output.value);
+                copyFeedback.style.display = 'inline';
+                setTimeout(() => {
+                    copyFeedback.style.display = 'none';
+                }, 2000);
+            } catch (err) {
+                showError('Failed to copy to clipboard');
+            }
+        }
+    </script>
+</body>
+</html>
