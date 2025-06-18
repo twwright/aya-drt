@@ -132,12 +132,31 @@
             align-items: center;
             gap: 0.5rem;
         }
+        
+        .info {
+            background-color: #e7f3ff;
+            border: 1px solid #b8daff;
+            color: #004085;
+            padding: 1rem;
+            border-radius: 4px;
+            margin-bottom: 1.5rem;
+        }
+        
+        .info-title {
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <h1>DRT Code Macro Replacement Tool</h1>
-        <p class="description">Paste the DRT code with DLV macros, and get a useable DOM script.</p>
+        <p class="description">Paste the DRT code with DLV or Current Job macros, and get a useable DOM script.</p>
+        
+        <div class="info">
+            <div class="info-title">Supported Macro Formats:</div>
+            <p>This tool supports both "DLV -" and "Current Job -" macro formats. Both formats will be properly processed and converted to the corresponding JavaScript properties.</p>
+        </div>
         
         <div class="error" id="error-message"></div>
         <div class="warning" id="warning-message"></div>
@@ -163,6 +182,7 @@
 
     <script>
         const dlvMapping = {
+            // DLV format macros
             "{{DLV - Job - Job ID}}": "jobDetails.jobID",
             "{{DLV - Job - City}}": "jobDetails.city",
             "{{DLV - Job - State Abbrev}}": "jobDetails.stateAbbrev",
@@ -170,11 +190,14 @@
             "{{Custom Js - Transparent Pay}}": "jobDetails.transparentPay",
             "{{DLV - Job - Fulfillment Type ID}}": "jobDetails.jobFulfillmentTypeId",
             "{{DLV - Job - Bonus}}": "jobDetails.bonus",
+            "{{DLV - Job - Employment Type Code}}": "jobDetails.employmentTypeCode",
+            
+            // Current Job format macros
             "{{Current Job - Job ID}}": "jobDetails.jobID",
             "{{Current Job - City}}": "jobDetails.city",
             "{{Current Job - State Abbreviation}}": "jobDetails.stateAbbrev",
-            "{{Current Job - H1}}": "jobDetails.h1",
-            "{{Current Job - Transparent Pay}}": "jobDetails.transparentPay"
+            "{{Current Job - Expertise Text}}": "jobDetails.expertiseText", 
+            "{{Current Job - Bonus}}": "jobDetails.bonus"
         };
 
         function showError(message) {
